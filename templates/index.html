@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chatbot DPIMA</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #556B2F;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #d9d9bf;
+      user-select: none;
+    }
+
+    #chatbot-container {
+      background: rgba(40, 50, 30, 0.85);
+      border-radius: 20px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+      width: 650px;
+      max-width: 95vw;
+      height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #chat-header {
+      background-color: #223311;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+      border-bottom: 2px solid #556633;
+    }
+
+    #chat-header h1 {
+      margin: 0 0 10px 0;
+      font-weight: 900;
+      font-size: 28px;
+      letter-spacing: 2px;
+      text-shadow: 1px 1px 4px #000;
+      color: #ccd68a;
+    }
+
+    .mute-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: transparent;
+      border: none;
+      color: #ccd68a;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .assistente-container {
+      display: flex;
+      justify-content: center;
+      position: relative;
+      width: 120px;
+      margin: 0 auto;
+    }
+
+    .assistente-container img {
+      width: 120px;
+      height: auto;
+      filter: drop-shadow(0 4px 4px rgba(0,0,0,0.7));
+      transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    }
+
+    #chat-messages {
+      flex: 1;
+      padding: 20px;
+      background-color: rgba(30, 40, 20, 0.9);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      font-size: 17px;
+      color: #d9d9bf;
+      user-select: text;
+    }
+
+    .msg {
+      max-width: 75%;
+      padding: 14px 18px;
+      border-radius: 24px;
+      box-shadow: 0 3px 8px rgb(0 0 0 / 0.6);
+      font-weight: 600;
+      line-height: 1.5;
+      letter-spacing: 0.03em;
+    }
+
+    .msg.user {
+      background-color: #5b732a;
+      color: #e9f4d6;
+      align-self: flex-end;
+      border-bottom-right-radius: 8px;
+    }
+
+    .msg.bot {
+      background-color: #9ab85d;
+      color: #243210;
+      align-self: flex-start;
+      border-bottom-left-radius: 8px;
+    }
+
+    #input-area {
+      display: flex;
+      gap: 14px;
+      padding: 18px 24px;
+      border-top: 2px solid #556633;
+      background: #2c3b16;
+    }
+
+    #pergunta {
+      flex: 1;
+      font-size: 18px;
+      padding: 16px 22px;
+      border-radius: 30px;
+      border: none;
+      outline: none;
+      background-color: #445b1b;
+      color: #d9d9bf;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.7);
+    }
+
+    #btn-perguntar {
+      background-color: #758b2c;
+      border: none;
+      border-radius: 30px;
+      color: #f0f4e0;
+      font-weight: 900;
+      font-size: 18px;
+      padding: 0 28px;
+      cursor: pointer;
+      box-shadow: 0 0 8px #9abb4f;
+    }
+
+    #aviso {
+      text-align: center;
+      color: #e53e3e;
+      font-weight: 700;
+      margin-top: 6px;
+      min-height: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <section id="chatbot-container" role="region" aria-label="Chatbot DPIMA">
+
+    <header id="chat-header">
+      <h1>Chatbot DPIMA</h1>
+      <button class="mute-btn" onclick="alternarVoz()" title="Ativar/Desativar voz" aria-pressed="true" id="btn-voz">
+        <i id="icone-voz" class="fa-solid fa-volume-up"></i>
+      </button>
+      <div class="assistente-container" aria-hidden="true">
+        <img id="personagem-img" src="static/personagem-parado.png" alt="Personagem DPIMA" />
+      </div>
+    </header>
+
+    <main id="chat-messages" role="log" aria-live="polite" aria-relevant="additions"></main>
+
+    <div id="aviso" aria-live="assertive"></div>
+
+    <footer id="input-area">
+      <input
+        type="text"
+        id="pergunta"
+        placeholder="Digite sua pergunta..."
+        onkeydown="if(event.key==='Enter'){ enviarPergunta(); }"
+        aria-label="Campo para digitar pergunta"
+      />
+      <button id="btn-perguntar" onclick="enviarPergunta()" aria-label="Enviar pergunta">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </footer>
+
+  </section>
+
+  <audio id="send-sound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_6c643e0c9f.mp3" preload="auto"></audio>
+
+  <script>
+    const personagemImg = document.getElementById('personagem-img');
+    const chatMessages = document.getElementById('chat-messages');
+    const perguntaInput = document.getElementById('pergunta');
+    const aviso = document.getElementById('aviso');
+    const sendSound = document.getElementById('send-sound');
+    const btnPerguntar = document.getElementById('btn-perguntar');
+    const iconeVoz = document.getElementById('icone-voz');
+    const btnVoz = document.getElementById('btn-voz');
+
+    let vozAtiva = true;
+    let vozesDisponiveis = [];
+
+    function alternarVoz() {
+      vozAtiva = !vozAtiva;
+      iconeVoz.className = vozAtiva ? 'fa-solid fa-volume-up' : 'fa-solid fa-volume-xmark';
+      btnVoz.setAttribute('aria-pressed', vozAtiva);
+    }
+
+    function adicionarMensagem(texto, tipo = 'bot') {
+      const msg = document.createElement('div');
+      msg.classList.add('msg', tipo);
+      msg.textContent = texto;
+      chatMessages.appendChild(msg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Carrega vozes disponíveis no sistema
+    function carregarVozes() {
+      vozesDisponiveis = window.speechSynthesis.getVoices();
+    }
+
+    function falarComVoz(texto) {
+      if (!vozAtiva || !texto.trim()) return;
+
+      personagemImg.src = "static/personagem-falando.gif";
+      const fala = new SpeechSynthesisUtterance(texto);
+      fala.lang = 'pt-BR';
+
+      // Seleciona voz natural pt-BR Google ou Microsoft se disponível
+      const vozNatural = vozesDisponiveis.find(v =>
+        v.lang.startsWith('pt-BR') &&
+        (v.name.includes('Google') || v.name.includes('Microsoft') || v.name.toLowerCase().includes('natural'))
+      );
+
+      if (vozNatural) {
+        fala.voice = vozNatural;
+        fala.rate = 1;
+        fala.pitch = 1.1;
+      } else {
+        fala.rate = 1;
+        fala.pitch = 1;
+        console.warn('Voz natural pt-BR não encontrada, usando padrão');
+      }
+
+      fala.onend = () => {
+        personagemImg.src = "static/personagem-parado.png";
+      };
+      fala.onerror = () => {
+        personagemImg.src = "static/personagem-parado.png";
+      };
+
+      window.speechSynthesis.speak(fala);
+    }
+
+    async function enviarPergunta() {
+      const pergunta = perguntaInput.value.trim();
+      aviso.textContent = '';
+
+      if (!pergunta) {
+        aviso.textContent = 'Digite algo antes de enviar.';
+        return;
+      }
+
+      adicionarMensagem(pergunta, 'user');
+      perguntaInput.value = '';
+      perguntaInput.disabled = true;
+      btnPerguntar.disabled = true;
+
+      try {
+        const res = await fetch('http://127.0.0.1:5000/perguntar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pergunta })
+        });
+
+        if (!res.ok) throw new Error('Erro na resposta');
+
+        const data = await res.json();
+        adicionarMensagem(data.resposta, 'bot');
+        falarComVoz(data.resposta);
+        sendSound.play();
+
+      } catch (err) {
+        aviso.textContent = 'Erro ao se conectar com o servidor.';
+        console.error(err);
+      } finally {
+        perguntaInput.disabled = false;
+        btnPerguntar.disabled = false;
+        perguntaInput.focus();
+      }
+    }
+
+    // Carregar vozes assim que estiverem disponíveis
+    window.speechSynthesis.onvoiceschanged = carregarVozes;
+    window.onload = () => {
+      carregarVozes();
+      perguntaInput.focus();
+    };
+  </script>
+
+</body>
+</html>
